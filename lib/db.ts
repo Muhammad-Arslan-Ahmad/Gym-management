@@ -238,6 +238,82 @@ export const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
   }
 }
 
+export const getFeeRecords = async (filters?: {
+  search?: string
+  status?: string
+  type?: string
+}) => {
+  if (!pool) {
+    console.log("[v0] Mock getFeeRecords with filters:", filters)
+
+    let filteredFees = [...mockFeeRecords]
+
+    // Apply search filter
+    if (filters?.search) {
+      const searchTerm = filters.search.toLowerCase()
+      filteredFees = filteredFees.filter(
+        (fee) =>
+          fee.employee_name?.toLowerCase().includes(searchTerm) ||
+          fee.description?.toLowerCase().includes(searchTerm) ||
+          fee.fee_type.toLowerCase().includes(searchTerm),
+      )
+    }
+
+    // Apply status filter
+    if (filters?.status) {
+      filteredFees = filteredFees.filter((fee) => fee.status === filters.status)
+    }
+
+    // Apply type filter
+    if (filters?.type) {
+      filteredFees = filteredFees.filter((fee) => fee.fee_type === filters.type)
+    }
+
+    return filteredFees
+  }
+
+  try {
+    let query = `
+      SELECT 
+        fr.*,
+        e.name as employee_name,
+        e.email as employee_email,
+        e.position as employee_position
+      FROM fee_records fr
+      JOIN employees e ON fr.employee_id = e.id
+      WHERE 1=1
+    `
+    const params: any[] = []
+
+    if (filters?.search) {
+      query += ` AND (fr.description ILIKE $${params.length + 1} OR e.name ILIKE $${params.length + 1})`
+      params.push(`%${filters.search}%`)
+    }
+
+    if (filters?.status) {
+      query += ` AND fr.status = $${params.length + 1}`
+      params.push(filters.status)
+    }
+
+    if (filters?.type) {
+      query += ` AND fr.fee_type = $${params.length + 1}`
+      params.push(filters.type)
+    }
+
+    query += ` ORDER BY fr.due_date DESC`
+
+    const result = await pool.query(query, params)
+    return result.rows as (FeeRecord & {
+      employee_name: string
+      employee_email: string
+      employee_position: string
+    })[]
+  } catch (error) {
+    console.error("Database query error:", error)
+    throw error
+  }
+}
+
 // Database types
 export interface AdminUser {
   id: number

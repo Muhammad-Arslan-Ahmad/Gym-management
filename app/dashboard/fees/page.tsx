@@ -1,7 +1,5 @@
 "use client"
 
-import { requireAuth } from "@/lib/auth"
-import { sql } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,49 +8,18 @@ import { Plus, Search, Trash2, DollarSign } from "lucide-react"
 import { AddFeeDialog } from "@/components/add-fee-dialog"
 import { DeleteFeeDialog } from "@/components/delete-fee-dialog"
 import { MarkAsPaidDialog } from "@/components/mark-as-paid-dialog"
-import type { FeeRecord } from "@/lib/db"
+import { getFeeRecords } from "@/lib/db"
 
 export default async function FeesPage({
   searchParams,
 }: {
   searchParams: { search?: string; status?: string; type?: string }
 }) {
-  await requireAuth()
-
-  let query = `
-    SELECT 
-      fr.*,
-      e.name as employee_name,
-      e.email as employee_email,
-      e.position as employee_position
-    FROM fee_records fr
-    JOIN employees e ON fr.employee_id = e.id
-    WHERE 1=1
-  `
-  const params: any[] = []
-
-  if (searchParams.search) {
-    query += ` AND (fr.notes ILIKE $${params.length + 1} OR e.name ILIKE $${params.length + 1})`
-    params.push(`%${searchParams.search}%`)
-  }
-
-  if (searchParams.status) {
-    query += ` AND fr.status = $${params.length + 1}`
-    params.push(searchParams.status)
-  }
-
-  if (searchParams.type) {
-    query += ` AND fr.fee_type = $${params.length + 1}`
-    params.push(searchParams.type)
-  }
-
-  query += ` ORDER BY fr.due_date DESC`
-
-  const feeRecords = (await sql(query, ...params)) as (FeeRecord & {
-    employee_name: string
-    employee_email: string
-    employee_position: string
-  })[]
+  const feeRecords = await getFeeRecords({
+    search: searchParams.search,
+    status: searchParams.status,
+    type: searchParams.type,
+  })
 
   // Calculate totals
   const totalPending =
