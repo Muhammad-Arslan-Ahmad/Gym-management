@@ -18,25 +18,44 @@ export default async function EmployeesPage({
   await requireAuth()
 
   // Build query with filters
-  let query = `
-    SELECT * FROM employees 
-    WHERE 1=1
-  `
-  const params: any[] = []
+  let employees: Employee[] = []
 
-  if (searchParams.search) {
-    query += ` AND (name ILIKE $${params.length + 1} OR email ILIKE $${params.length + 1} OR position ILIKE $${params.length + 1})`
-    params.push(`%${searchParams.search}%`)
+  try {
+    if (searchParams.search && searchParams.status) {
+      // Both search and status filters
+      const searchTerm = `%${searchParams.search}%`
+      employees = await sql`
+        SELECT * FROM employees 
+        WHERE (name ILIKE ${searchTerm} OR email ILIKE ${searchTerm} OR position ILIKE ${searchTerm})
+        AND status = ${searchParams.status}
+        ORDER BY created_at DESC
+      `
+    } else if (searchParams.search) {
+      // Only search filter
+      const searchTerm = `%${searchParams.search}%`
+      employees = await sql`
+        SELECT * FROM employees 
+        WHERE name ILIKE ${searchTerm} OR email ILIKE ${searchTerm} OR position ILIKE ${searchTerm}
+        ORDER BY created_at DESC
+      `
+    } else if (searchParams.status) {
+      // Only status filter
+      employees = await sql`
+        SELECT * FROM employees 
+        WHERE status = ${searchParams.status}
+        ORDER BY created_at DESC
+      `
+    } else {
+      // No filters
+      employees = await sql`
+        SELECT * FROM employees 
+        ORDER BY created_at DESC
+      `
+    }
+  } catch (error) {
+    console.error("Database error:", error)
+    employees = []
   }
-
-  if (searchParams.status) {
-    query += ` AND status = $${params.length + 1}`
-    params.push(searchParams.status)
-  }
-
-  query += ` ORDER BY created_at DESC`
-
-  const employees = (await sql(query, ...params)) as Employee[]
 
   return (
     <div>

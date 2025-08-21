@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@neondatabase/serverless": "latest",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "1.1.1",
@@ -52,6 +51,8 @@
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
     "next-themes": "latest",
+    "pg": "latest",
+    "pg-native": "latest",
     "react": "^18",
     "react-day-picker": "9.8.0",
     "react-dom": "^18",
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/pg": "^8.10.9",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "postcss": "^8.5",
