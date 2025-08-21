@@ -1,15 +1,13 @@
-"use client"
-
 import { requireAuth } from "@/lib/auth"
 import { sql } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { AddEmployeeDialog } from "@/components/add-employee-dialog"
 import { DeleteEmployeeDialog } from "@/components/delete-employee-dialog"
+import { EmployeeSearch } from "@/components/employee-search"
 import type { Employee } from "@/lib/db"
 
 export default async function EmployeesPage({
@@ -42,42 +40,7 @@ export default async function EmployeesPage({
 
   return (
     <div>
-      {/* Filters and Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <form method="GET" className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search employees by name, email, or position..."
-              className="pl-10"
-              defaultValue={searchParams.search}
-              name="search"
-            />
-            {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
-          </form>
-        </div>
-        <div className="flex gap-2">
-          <form method="GET">
-            <select
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-              defaultValue={searchParams.status || ""}
-              name="status"
-              onChange={(e) => (e.target.form as HTMLFormElement).submit()}
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            {searchParams.search && <input type="hidden" name="search" value={searchParams.search} />}
-          </form>
-          <AddEmployeeDialog>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Employee
-            </Button>
-          </AddEmployeeDialog>
-        </div>
-      </div>
+      <EmployeeSearch searchParams={searchParams} />
 
       {/* Employees Table */}
       <Card>
