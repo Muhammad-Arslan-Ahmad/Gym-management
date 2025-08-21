@@ -1,21 +1,13 @@
 import type React from "react"
-import { requireAuth, logout } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Users, DollarSign, Bell, Home, LogOut } from "lucide-react"
 import Link from "next/link"
 
-async function logoutAction() {
-  "use server"
-  await logout()
-}
-
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user } = await requireAuth()
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -23,16 +15,18 @@ export default async function DashboardLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-blue-900">Gym Management</h1>
+              <Link href="/">
+                <h1 className="text-xl font-bold text-blue-900 hover:text-blue-700 cursor-pointer">Gym Management</h1>
+              </Link>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Welcome, {user.name}</span>
-              <form action={logoutAction}>
-                <Button variant="ghost" size="sm" type="submit">
+              <span className="text-sm text-gray-700">Welcome, Demo Admin</span>
+              <Link href="/">
+                <Button variant="ghost" size="sm">
                   <LogOut className="h-4 w-4 mr-2" />
-                  Logout
+                  Home
                 </Button>
-              </form>
+              </Link>
             </div>
           </div>
         </div>
