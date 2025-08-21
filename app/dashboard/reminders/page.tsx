@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,51 +6,28 @@ import Link from "next/link"
 import { SendReminderDialog } from "@/components/send-reminder-dialog"
 import { BulkReminderDialog } from "@/components/bulk-reminder-dialog"
 
-export default async function RemindersPage() {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect("/auth/login")
+async function getRemindersData() {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reminders`, {
+      cache: "no-store",
+    })
+    if (!response.ok) {
+      throw new Error("Failed to fetch reminders data")
+    }
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching reminders data:", error)
+    return { overdueFeesData: [], recentReminders: [] }
   }
+}
 
-  // Get overdue and pending fees that need reminders
-  const { data: overdueFeesData } = await supabase
-    .from("fee_records")
-    .select(`
-      *,
-      employees (
-        id,
-        name,
-        email,
-        position
-      )
-    `)
-    .in("status", ["pending", "overdue"])
-    .order("due_date", { ascending: true })
-
-  // Get recent reminder history
-  const { data: recentReminders } = await supabase
-    .from("reminders")
-    .select(`
-      *,
-      employees (
-        name,
-        email
-      ),
-      fee_records (
-        amount,
-        fee_type,
-        due_date
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .limit(10)
+export default async function RemindersPage() {
+  const { overdueFeesData, recentReminders } = await getRemindersData()
 
   // Calculate stats
-  const overdueCount = overdueFeesData?.filter((f) => f.status === "overdue").length || 0
-  const pendingCount = overdueFeesData?.filter((f) => f.status === "pending").length || 0
-  const totalAmount = overdueFeesData?.reduce((sum, f) => sum + Number(f.amount), 0) || 0
+  const overdueCount = overdueFeesData?.filter((f: any) => f.status === "overdue").length || 0
+  const pendingCount = overdueFeesData?.filter((f: any) => f.status === "pending").length || 0
+  const totalAmount = overdueFeesData?.reduce((sum: number, f: any) => sum + Number(f.amount), 0) || 0
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -134,10 +109,10 @@ export default async function RemindersPage() {
             <CardContent>
               {overdueFeesData && overdueFeesData.length > 0 ? (
                 <div className="space-y-4">
-                  {overdueFeesData.slice(0, 8).map((fee) => (
+                  {overdueFeesData.slice(0, 8).map((fee: any) => (
                     <div key={fee.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{fee.employees?.name}</div>
+                        <div className="font-medium text-gray-900">{fee.employee_name}</div>
                         <div className="text-sm text-gray-500">
                           ${Number(fee.amount).toLocaleString()} - {fee.fee_type} fee
                         </div>
@@ -179,36 +154,21 @@ export default async function RemindersPage() {
             <CardContent>
               {recentReminders && recentReminders.length > 0 ? (
                 <div className="space-y-4">
-                  {recentReminders.map((reminder) => (
+                  {recentReminders.map((reminder: any) => (
                     <div key={reminder.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{reminder.employees?.name}</div>
+                        <div className="font-medium text-gray-900">{reminder.employee_name}</div>
                         <div className="text-sm text-gray-500">
-                          ${Number(reminder.fee_records?.amount).toLocaleString()} - {reminder.fee_records?.fee_type}{" "}
-                          fee
+                          ${Number(reminder.amount || 0).toLocaleString()} - {reminder.fee_type || "General"} fee
                         </div>
                         <div className="text-sm text-gray-500">
                           {reminder.sent_at ? new Date(reminder.sent_at).toLocaleString() : "Not sent yet"}
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge
-                          variant={
-                            reminder.status === "sent"
-                              ? "default"
-                              : reminder.status === "failed"
-                                ? "destructive"
-                                : "secondary"
-                          }
-                        >
-                          {reminder.status}
-                        </Badge>
+                        <Badge variant="default">sent</Badge>
                         <div className="text-gray-400">
-                          {reminder.reminder_type === "email" ? (
-                            <Mail className="h-4 w-4" />
-                          ) : (
-                            <Send className="h-4 w-4" />
-                          )}
+                          <Mail className="h-4 w-4" />
                         </div>
                       </div>
                     </div>

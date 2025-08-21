@@ -1,17 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/db"
+import { query } from "@/lib/db-server"
 import { requireAuth } from "@/lib/auth"
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAuth()
 
-    const result = await sql`
-      DELETE FROM fee_records WHERE id = ${params.id}
+    const result = await query(
+      `
+      DELETE FROM fee_records WHERE id = $1
       RETURNING *
-    `
+    `,
+      [params.id],
+    )
 
-    if (result.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: "Fee record not found" }, { status: 404 })
     }
 

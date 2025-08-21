@@ -15,21 +15,18 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface FeeRecord {
-  id: string
+  id: number
   amount: number
   fee_type: string
   due_date: string
   status: string
-  employees?: {
-    id: string
-    name: string
-    email: string
-    position: string
-  }
+  employee_name?: string
+  employee_email?: string
+  employee_id: number
 }
 
 interface SendReminderDialogProps {
@@ -40,55 +37,43 @@ interface SendReminderDialogProps {
 export function SendReminderDialog({ children, feeRecord }: SendReminderDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const supabase = createClient()
-
-    // Get current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setError("You must be logged in to send reminders")
-      setIsLoading(false)
-      return
-    }
 
     try {
-      // Create reminder record
-      const { error: reminderError } = await supabase.from("reminders").insert({
-        fee_record_id: feeRecord.id,
-        employee_id: feeRecord.employees?.id,
-        reminder_type: formData.get("reminder_type") as string,
-        status: "sent", // In a real app, this would be "pending" until actually sent
-        sent_at: new Date().toISOString(),
-        created_by: user.id,
+      const response = await fetch("/api/reminders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          employee_id: feeRecord.employee_id,
+          fee_record_id: feeRecord.id,
+          message: formData.get("message") as string,
+          reminder_type: formData.get("reminder_type") as string,
+        }),
       })
 
-      if (reminderError) throw reminderError
+      if (!response.ok) {
+        throw new Error("Failed to send reminder")
+      }
 
-      // In a real application, you would integrate with an email service here
-      // For demo purposes, we'll just simulate sending the reminder
-      console.log("Reminder sent to:", feeRecord.employees?.email)
-      console.log("Message:", formData.get("message"))
-
+      toast.success(`Payment reminder sent to ${feeRecord.employee_name}`)
       setOpen(false)
       router.refresh()
     } catch (error: any) {
-      setError(error.message || "Failed to send reminder")
+      toast.error(error.message || "Failed to send reminder")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const defaultMessage = `Dear ${feeRecord.employees?.name},
+  const defaultMessage = `Dear ${feeRecord.employee_name},
 
 This is a friendly reminder that your ${feeRecord.fee_type} fee of $${Number(feeRecord.amount).toLocaleString()} was due on ${new Date(feeRecord.due_date).toLocaleDateString()}.
 
@@ -97,7 +82,7 @@ Please make your payment at your earliest convenience to avoid any late fees.
 Thank you for your prompt attention to this matter.
 
 Best regards,
-GymManager Pro Team`
+Gym Management Team`
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -106,21 +91,21 @@ GymManager Pro Team`
         <DialogHeader>
           <DialogTitle>Send Payment Reminder</DialogTitle>
           <DialogDescription>
-            Send a payment reminder to {feeRecord.employees?.name} for their $
-            {Number(feeRecord.amount).toLocaleString()} {feeRecord.fee_type} fee.
+            Send a payment reminder to {feeRecord.employee_name} for their ${Number(feeRecord.amount).toLocaleString()}{" "}
+            {feeRecord.fee_type} fee.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="reminder_type">Reminder Type</Label>
-            <Select name="reminder_type" defaultValue="email">
+            <Select name="reminder_type" defaultValue="payment_due">
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="sms">SMS (Coming Soon)</SelectItem>
-                <SelectItem value="system">System Notification</SelectItem>
+                <SelectItem value="payment_due">Payment Due</SelectItem>
+                <SelectItem value="overdue_payment">Overdue Payment</SelectItem>
+                <SelectItem value="general">General Reminder</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -132,9 +117,9 @@ GymManager Pro Team`
               rows={8}
               defaultValue={defaultMessage}
               placeholder="Enter your reminder message..."
+              required
             />
           </div>
-          {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

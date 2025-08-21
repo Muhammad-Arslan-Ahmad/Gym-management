@@ -1,17 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/db"
+import { query } from "@/lib/db-server"
 import { requireAuth } from "@/lib/auth"
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAuth()
 
-    const result = await sql`
-      DELETE FROM employees WHERE id = ${params.id}
+    const result = await query(
+      `
+      DELETE FROM employees WHERE id = $1
       RETURNING *
-    `
+    `,
+      [params.id],
+    )
 
-    if (result.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 })
     }
 
@@ -29,19 +32,22 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const { name, email, phone, position, salary, hire_date, status } = body
 
-    const result = await sql`
+    const result = await query(
+      `
       UPDATE employees 
-      SET name = ${name}, email = ${email}, phone = ${phone}, position = ${position}, 
-          salary = ${salary}, hire_date = ${hire_date}, status = ${status}, updated_at = NOW()
-      WHERE id = ${params.id}
+      SET name = $1, email = $2, phone = $3, position = $4, 
+          salary = $5, hire_date = $6, status = $7, updated_at = NOW()
+      WHERE id = $8
       RETURNING *
-    `
+    `,
+      [name, email, phone, position, salary, hire_date, status, params.id],
+    )
 
-    if (result.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 })
     }
 
-    return NextResponse.json(result[0])
+    return NextResponse.json(result.rows[0])
   } catch (error: any) {
     console.error("Error updating employee:", error)
     if (error.message?.includes("duplicate key")) {

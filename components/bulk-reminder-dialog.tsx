@@ -16,21 +16,18 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface FeeRecord {
-  id: string
+  id: number
   amount: number
   fee_type: string
   due_date: string
   status: string
-  employees?: {
-    id: string
-    name: string
-    email: string
-    position: string
-  }
+  employee_name?: string
+  employee_email?: string
+  employee_id: number
 }
 
 interface BulkReminderDialogProps {
@@ -41,11 +38,10 @@ interface BulkReminderDialogProps {
 export function BulkReminderDialog({ children, feeRecords }: BulkReminderDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedFees, setSelectedFees] = useState<string[]>([])
+  const [selectedFees, setSelectedFees] = useState<number[]>([])
   const router = useRouter()
 
-  const handleFeeSelection = (feeId: string, checked: boolean) => {
+  const handleFeeSelection = (feeId: number, checked: boolean) => {
     if (checked) {
       setSelectedFees([...selectedFees, feeId])
     } else {
@@ -64,53 +60,51 @@ export function BulkReminderDialog({ children, feeRecords }: BulkReminderDialogP
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
 
     if (selectedFees.length === 0) {
-      setError("Please select at least one fee record")
+      toast.error("Please select at least one fee record")
       setIsLoading(false)
       return
     }
 
     const formData = new FormData(e.currentTarget)
-    const supabase = createClient()
-
-    // Get current user
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setError("You must be logged in to send reminders")
-      setIsLoading(false)
-      return
-    }
+    const message = formData.get("message") as string
+    const reminderType = formData.get("reminder_type") as string
 
     try {
-      // Create reminder records for selected fees
-      const reminderRecords = selectedFees.map((feeId) => {
+      const promises = selectedFees.map(async (feeId) => {
         const feeRecord = feeRecords.find((f) => f.id === feeId)
-        return {
-          fee_record_id: feeId,
-          employee_id: feeRecord?.employees?.id,
-          reminder_type: formData.get("reminder_type") as string,
-          status: "sent", // In a real app, this would be "pending" until actually sent
-          sent_at: new Date().toISOString(),
-          created_by: user.id,
-        }
+        if (!feeRecord) return
+
+        // Replace placeholders in message
+        const personalizedMessage = message
+          .replace(/\[Employee Name\]/g, feeRecord.employee_name || "Employee")
+          .replace(/\[Fee Type\]/g, feeRecord.fee_type)
+          .replace(/\[Amount\]/g, `$${Number(feeRecord.amount).toLocaleString()}`)
+          .replace(/\[Due Date\]/g, new Date(feeRecord.due_date).toLocaleDateString())
+
+        return fetch("/api/reminders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            employee_id: feeRecord.employee_id,
+            fee_record_id: feeRecord.id,
+            message: personalizedMessage,
+            reminder_type: reminderType,
+          }),
+        })
       })
 
-      const { error: reminderError } = await supabase.from("reminders").insert(reminderRecords)
+      await Promise.all(promises)
 
-      if (reminderError) throw reminderError
-
-      // In a real application, you would integrate with an email service here
-      console.log(`Bulk reminders sent to ${selectedFees.length} employees`)
-
+      toast.success(`Bulk reminders sent to ${selectedFees.length} employees`)
       setOpen(false)
       setSelectedFees([])
       router.refresh()
     } catch (error: any) {
-      setError(error.message || "Failed to send bulk reminders")
+      toast.error(error.message || "Failed to send bulk reminders")
     } finally {
       setIsLoading(false)
     }
@@ -118,14 +112,14 @@ export function BulkReminderDialog({ children, feeRecords }: BulkReminderDialogP
 
   const defaultMessage = `Dear [Employee Name],
 
-This is a friendly reminder that your [Fee Type] fee of $[Amount] was due on [Due Date].
+This is a friendly reminder that your [Fee Type] fee of [Amount] was due on [Due Date].
 
 Please make your payment at your earliest convenience to avoid any late fees.
 
 Thank you for your prompt attention to this matter.
 
 Best regards,
-GymManager Pro Team`
+Gym Management Team`
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -155,12 +149,12 @@ GymManager Pro Team`
                 {feeRecords.map((fee) => (
                   <div key={fee.id} className="flex items-center space-x-2">
                     <Checkbox
-                      id={fee.id}
+                      id={fee.id.toString()}
                       checked={selectedFees.includes(fee.id)}
                       onCheckedChange={(checked) => handleFeeSelection(fee.id, checked as boolean)}
                     />
-                    <Label htmlFor={fee.id} className="flex-1 cursor-pointer">
-                      <div className="font-medium">{fee.employees?.name}</div>
+                    <Label htmlFor={fee.id.toString()} className="flex-1 cursor-pointer">
+                      <div className="font-medium">{fee.employee_name}</div>
                       <div className="text-sm text-gray-500">
                         ${Number(fee.amount).toLocaleString()} - {fee.fee_type} fee (Due:{" "}
                         {new Date(fee.due_date).toLocaleDateString()})
@@ -177,14 +171,14 @@ GymManager Pro Team`
 
           <div className="space-y-2">
             <Label htmlFor="reminder_type">Reminder Type</Label>
-            <Select name="reminder_type" defaultValue="email">
+            <Select name="reminder_type" defaultValue="payment_due">
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="sms">SMS (Coming Soon)</SelectItem>
-                <SelectItem value="system">System Notification</SelectItem>
+                <SelectItem value="payment_due">Payment Due</SelectItem>
+                <SelectItem value="overdue_payment">Overdue Payment</SelectItem>
+                <SelectItem value="general">General Reminder</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -197,13 +191,12 @@ GymManager Pro Team`
               rows={6}
               defaultValue={defaultMessage}
               placeholder="Enter your reminder message template..."
+              required
             />
             <div className="text-sm text-gray-500">
               Use placeholders: [Employee Name], [Fee Type], [Amount], [Due Date]
             </div>
           </div>
-
-          {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
