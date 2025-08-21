@@ -1,28 +1,3 @@
-import { Pool } from "pg"
-
-const databaseUrl = process.env.DATABASE_URL || "postgresql://gym_admin:gym_password_2024@localhost:5432/gym_management"
-
-let pool: Pool | null = null
-
-if (
-  (databaseUrl && databaseUrl !== "postgresql://gym_admin:gym_password_2024@localhost:5432/gym_management") ||
-  process.env.NODE_ENV === "production"
-) {
-  pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  })
-} else {
-  console.warn("Using fallback database connection for development")
-  pool = new Pool({
-    host: "localhost",
-    port: 5432,
-    database: "gym_management",
-    user: "gym_admin",
-    password: "gym_password_2024",
-  })
-}
-
 // Mock database for v0 preview - will use real PostgreSQL in Docker
 const mockEmployees: Employee[] = [
   {
@@ -144,98 +119,69 @@ const mockFeeRecords: FeeRecord[] = [
 ]
 
 export const query = async (text: string, params?: any[]) => {
-  if (!pool) {
-    console.log("[v0] Mock database query:", text, params)
+  console.log("[v0] Mock database query:", text, params)
 
-    // Simulate database queries with mock data
-    if (text.includes("SELECT") && text.includes("employees")) {
-      return { rows: mockEmployees }
-    }
-
-    if (text.includes("SELECT") && text.includes("fee_records")) {
-      return { rows: mockFeeRecords }
-    }
-
-    return { rows: [] }
+  // Simulate database queries with mock data
+  if (text.includes("SELECT") && text.includes("employees")) {
+    return { rows: mockEmployees }
   }
 
-  try {
-    const result = await pool.query(text, params)
-    return result
-  } catch (error) {
-    console.error("Database query error:", error)
-    throw error
+  if (text.includes("SELECT") && text.includes("fee_records")) {
+    return { rows: mockFeeRecords }
   }
+
+  return { rows: [] }
 }
 
 export const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
-  if (!pool) {
-    console.log("[v0] Mock SQL template query:", strings, values)
+  console.log("[v0] Mock SQL template query:", strings, values)
 
-    const queryText = strings.join("?")
+  const queryText = strings.join("?")
 
-    // Handle employee queries
-    if (queryText.includes("employees")) {
-      let filteredEmployees = [...mockEmployees]
+  // Handle employee queries
+  if (queryText.includes("employees")) {
+    let filteredEmployees = [...mockEmployees]
 
-      // Apply search filter if present
-      if (values.some((v) => typeof v === "string" && v.includes("%"))) {
-        const searchTerm = values.find((v) => typeof v === "string" && v.includes("%"))?.replace(/%/g, "") || ""
-        if (searchTerm) {
-          filteredEmployees = mockEmployees.filter(
-            (emp) =>
-              emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              emp.position.toLowerCase().includes(searchTerm.toLowerCase()),
-          )
-        }
+    // Apply search filter if present
+    if (values.some((v) => typeof v === "string" && v.includes("%"))) {
+      const searchTerm = values.find((v) => typeof v === "string" && v.includes("%"))?.replace(/%/g, "") || ""
+      if (searchTerm) {
+        filteredEmployees = mockEmployees.filter(
+          (emp) =>
+            emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            emp.position.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
       }
-
-      // Apply status filter if present
-      if (values.includes("active") || values.includes("inactive")) {
-        const status = values.find((v) => v === "active" || v === "inactive")
-        if (status) {
-          filteredEmployees = filteredEmployees.filter((emp) => emp.status === status)
-        }
-      }
-
-      return filteredEmployees
     }
 
-    // Handle fee record queries
-    if (queryText.includes("fee_records")) {
-      let filteredFees = [...mockFeeRecords]
-
-      // Apply status filter if present
-      if (values.includes("pending") || values.includes("paid") || values.includes("overdue")) {
-        const status = values.find((v) => ["pending", "paid", "overdue"].includes(v))
-        if (status) {
-          filteredFees = filteredFees.filter((fee) => fee.status === status)
-        }
+    // Apply status filter if present
+    if (values.includes("active") || values.includes("inactive")) {
+      const status = values.find((v) => v === "active" || v === "inactive")
+      if (status) {
+        filteredEmployees = filteredEmployees.filter((emp) => emp.status === status)
       }
-
-      return filteredFees
     }
 
-    return []
+    return filteredEmployees
   }
 
-  try {
-    // Convert template literal to parameterized query
-    let text = strings[0]
-    const params: any[] = []
+  // Handle fee record queries
+  if (queryText.includes("fee_records")) {
+    let filteredFees = [...mockFeeRecords]
 
-    for (let i = 0; i < values.length; i++) {
-      text += `$${i + 1}` + strings[i + 1]
-      params.push(values[i])
+    // Apply status filter if present
+    if (values.includes("pending") || values.includes("paid") || values.includes("overdue")) {
+      const status = values.find((v) => ["pending", "paid", "overdue"].includes(v))
+      if (status) {
+        filteredFees = filteredFees.filter((fee) => fee.status === status)
+      }
     }
 
-    const result = await pool.query(text, params)
-    return result.rows
-  } catch (error) {
-    console.error("Database query error:", error)
-    throw error
+    return filteredFees
   }
+
+  return []
 }
 
 export const getFeeRecords = async (filters?: {
@@ -243,75 +189,32 @@ export const getFeeRecords = async (filters?: {
   status?: string
   type?: string
 }) => {
-  if (!pool) {
-    console.log("[v0] Mock getFeeRecords with filters:", filters)
+  console.log("[v0] Mock getFeeRecords with filters:", filters)
 
-    let filteredFees = [...mockFeeRecords]
+  let filteredFees = [...mockFeeRecords]
 
-    // Apply search filter
-    if (filters?.search) {
-      const searchTerm = filters.search.toLowerCase()
-      filteredFees = filteredFees.filter(
-        (fee) =>
-          fee.employee_name?.toLowerCase().includes(searchTerm) ||
-          fee.description?.toLowerCase().includes(searchTerm) ||
-          fee.fee_type.toLowerCase().includes(searchTerm),
-      )
-    }
-
-    // Apply status filter
-    if (filters?.status) {
-      filteredFees = filteredFees.filter((fee) => fee.status === filters.status)
-    }
-
-    // Apply type filter
-    if (filters?.type) {
-      filteredFees = filteredFees.filter((fee) => fee.fee_type === filters.type)
-    }
-
-    return filteredFees
+  // Apply search filter
+  if (filters?.search) {
+    const searchTerm = filters.search.toLowerCase()
+    filteredFees = filteredFees.filter(
+      (fee) =>
+        fee.employee_name?.toLowerCase().includes(searchTerm) ||
+        fee.description?.toLowerCase().includes(searchTerm) ||
+        fee.fee_type.toLowerCase().includes(searchTerm),
+    )
   }
 
-  try {
-    let query = `
-      SELECT 
-        fr.*,
-        e.name as employee_name,
-        e.email as employee_email,
-        e.position as employee_position
-      FROM fee_records fr
-      JOIN employees e ON fr.employee_id = e.id
-      WHERE 1=1
-    `
-    const params: any[] = []
-
-    if (filters?.search) {
-      query += ` AND (fr.description ILIKE $${params.length + 1} OR e.name ILIKE $${params.length + 1})`
-      params.push(`%${filters.search}%`)
-    }
-
-    if (filters?.status) {
-      query += ` AND fr.status = $${params.length + 1}`
-      params.push(filters.status)
-    }
-
-    if (filters?.type) {
-      query += ` AND fr.fee_type = $${params.length + 1}`
-      params.push(filters.type)
-    }
-
-    query += ` ORDER BY fr.due_date DESC`
-
-    const result = await pool.query(query, params)
-    return result.rows as (FeeRecord & {
-      employee_name: string
-      employee_email: string
-      employee_position: string
-    })[]
-  } catch (error) {
-    console.error("Database query error:", error)
-    throw error
+  // Apply status filter
+  if (filters?.status) {
+    filteredFees = filteredFees.filter((fee) => fee.status === filters.status)
   }
+
+  // Apply type filter
+  if (filters?.type) {
+    filteredFees = filteredFees.filter((fee) => fee.fee_type === filters.type)
+  }
+
+  return filteredFees
 }
 
 // Database types
