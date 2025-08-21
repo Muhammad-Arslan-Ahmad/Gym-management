@@ -27,6 +27,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://gym_admin:gym_password_2024@postgres:5432/gym_management
       - NODE_ENV=production
+      - SESSION_SECRET=gym_management_secret_key_2024_change_in_production
     depends_on:
       postgres:
         condition: service_healthy
