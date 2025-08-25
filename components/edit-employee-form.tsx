@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
 interface Employee {
@@ -36,24 +35,26 @@ export function EditEmployeeForm({ employee }: EditEmployeeFormProps) {
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const supabase = createClient()
 
     try {
-      const { error } = await supabase
-        .from("employees")
-        .update({
-          name: formData.get("name") as string,
-          email: formData.get("email") as string,
-          phone: (formData.get("phone") as string) || null,
-          position: formData.get("position") as string,
-          hire_date: formData.get("hire_date") as string,
+      const response = await fetch(`/api/employees/${employee.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.get("name"),
+          email: formData.get("email"),
+          phone: formData.get("phone") || null,
+          position: formData.get("position"),
+          hire_date: formData.get("hire_date"),
           salary: formData.get("salary") ? Number(formData.get("salary")) : null,
-          status: formData.get("status") as string,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", employee.id)
+          status: formData.get("status"),
+        }),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to update employee")
+      }
 
       router.push("/dashboard/employees")
       router.refresh()
@@ -89,7 +90,13 @@ export function EditEmployeeForm({ employee }: EditEmployeeFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="hire_date">Hire Date *</Label>
-          <Input id="hire_date" name="hire_date" type="date" defaultValue={employee.hire_date} required />
+          <Input
+            id="hire_date"
+            name="hire_date"
+            type="date"
+            defaultValue={employee.hire_date ? String(employee.hire_date).slice(0, 10) : ""}
+            required
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="salary">Salary</Label>

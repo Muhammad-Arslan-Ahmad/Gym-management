@@ -57,10 +57,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default admin user (password: admin123)
-INSERT INTO admin_users (email, password_hash, name) VALUES 
-('admin@gym.com', '$2b$10$rOzJqQqQqQqQqQqQqQqQqOzJqQqQqQqQqQqQqQqQqOzJqQqQqQqQqu', 'Gym Administrator')
-ON CONFLICT (email) DO NOTHING;
+-- Default admin user will be created on first login if none exists
 
 -- Insert dummy employees
 INSERT INTO employees (name, email, phone, position, salary, hire_date, status) VALUES 

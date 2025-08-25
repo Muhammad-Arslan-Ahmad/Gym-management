@@ -6,7 +6,8 @@ let pool: Pool | null = null
 export function getPool(): Pool {
   if (!pool) {
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL || "postgresql://gym_user:gym_password@localhost:5432/gym_management",
+      connectionString:
+        process.env.DATABASE_URL || "postgresql://gym_admin:gym_password_2024@localhost:5432/gym_management",
       ssl: false,
     })
   }

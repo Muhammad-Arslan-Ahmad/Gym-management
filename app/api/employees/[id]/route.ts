@@ -2,6 +2,28 @@ import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db-server"
 import { requireAuth } from "@/lib/auth"
 
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await requireAuth()
+
+    const result = await query(
+      `
+      SELECT * FROM employees WHERE id = $1
+    `,
+      [params.id],
+    )
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+    }
+
+    return NextResponse.json(result.rows[0])
+  } catch (error) {
+    console.error("Error fetching employee:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAuth()
@@ -30,18 +52,32 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await requireAuth()
     const body = await request.json()
 
-    const { name, email, phone, position, salary, hire_date, status } = body
+    const allowedFields = ["name", "email", "phone", "position", "salary", "hire_date", "status"]
+    const setClauses: string[] = []
+    const values: any[] = []
+    let idx = 0
 
-    const result = await query(
-      `
-      UPDATE employees 
-      SET name = $1, email = $2, phone = $3, position = $4, 
-          salary = $5, hire_date = $6, status = $7, updated_at = NOW()
-      WHERE id = $8
+    for (const key of allowedFields) {
+      if (key in body) {
+        idx += 1
+        setClauses.push(`${key} = $${idx}`)
+        values.push(body[key])
+      }
+    }
+
+    if (setClauses.length === 0) {
+      return NextResponse.json({ error: "No valid fields provided" }, { status: 400 })
+    }
+
+    const queryText = `
+      UPDATE employees
+      SET ${setClauses.join(", ")}, updated_at = NOW()
+      WHERE id = $${idx + 1}
       RETURNING *
-    `,
-      [name, email, phone, position, salary, hire_date, status, params.id],
-    )
+    `
+    values.push(params.id)
+
+    const result = await query(queryText, values)
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 })

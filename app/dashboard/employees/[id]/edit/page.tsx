@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth"
+import { query } from "@/lib/db-server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
@@ -7,21 +8,17 @@ import Link from "next/link"
 import { EditEmployeeForm } from "@/components/edit-employee-form"
 
 export default async function EditEmployeePage({ params }: { params: { id: string } }) {
-  const supabase = await createClient()
+  await requireAuth()
 
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect("/auth/login")
-  }
+  const result = await query(
+    `
+      SELECT * FROM employees WHERE id = $1
+    `,
+    [params.id],
+  )
 
-  // Get employee data
-  const { data: employee, error: employeeError } = await supabase
-    .from("employees")
-    .select("*")
-    .eq("id", params.id)
-    .single()
-
-  if (employeeError || !employee) {
+  const employee = result.rows[0]
+  if (!employee) {
     redirect("/dashboard/employees")
   }
 

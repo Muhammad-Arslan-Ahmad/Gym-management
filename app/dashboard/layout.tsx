@@ -1,6 +1,6 @@
 import type React from "react"
 import { Button } from "@/components/ui/button"
-import { Users, DollarSign, Bell, Home, LogOut } from "lucide-react"
+import { Users, DollarSign, Bell, Home, LogOut, Settings } from "lucide-react"
 import Link from "next/link"
 
 export default function DashboardLayout({
@@ -20,13 +20,18 @@ export default function DashboardLayout({
               </Link>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Welcome, Demo Admin</span>
-              <Link href="/">
+              <Link href="/dashboard/settings">
                 <Button variant="ghost" size="sm">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Home
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </Button>
               </Link>
+              <form action="/api/auth/logout" method="POST">
+                <Button variant="ghost" size="sm" type="submit">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              </form>
             </div>
           </div>
         </div>

@@ -1,5 +1,3 @@
-"use client"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +7,8 @@ import { AddFeeDialog } from "@/components/add-fee-dialog"
 import { DeleteFeeDialog } from "@/components/delete-fee-dialog"
 import { MarkAsPaidDialog } from "@/components/mark-as-paid-dialog"
 import { getFeeRecords } from "@/lib/db"
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export default async function FeesPage({
   searchParams,
@@ -87,13 +87,13 @@ export default async function FeesPage({
               className="px-3 py-2 border border-gray-300 rounded-md text-sm"
               defaultValue={searchParams.status || ""}
               name="status"
-              onChange={(e) => (e.target.form as HTMLFormElement).submit()}
             >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
             </select>
+            <button type="submit" className="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">Apply</button>
             {searchParams.search && <input type="hidden" name="search" value={searchParams.search} />}
             {searchParams.type && <input type="hidden" name="type" value={searchParams.type} />}
           </form>
@@ -102,13 +102,13 @@ export default async function FeesPage({
               className="px-3 py-2 border border-gray-300 rounded-md text-sm"
               defaultValue={searchParams.type || ""}
               name="type"
-              onChange={(e) => (e.target.form as HTMLFormElement).submit()}
             >
               <option value="">All Types</option>
               <option value="Monthly Membership">Monthly Membership</option>
               <option value="Training Fee">Training Fee</option>
               <option value="Equipment Fee">Equipment Fee</option>
             </select>
+            <button type="submit" className="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">Apply</button>
             {searchParams.search && <input type="hidden" name="search" value={searchParams.search} />}
             {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
           </form>
@@ -148,7 +148,7 @@ export default async function FeesPage({
                       <td className="py-3 px-4">
                         <div>
                           <div className="font-medium text-gray-900">{fee.employee_name}</div>
-                          <div className="text-sm text-gray-500">{fee.employee_position}</div>
+                          <div className="text-sm text-gray-500">{fee.fee_type}</div>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-900 font-medium">${Number(fee.amount).toLocaleString()}</td>
@@ -175,17 +175,13 @@ export default async function FeesPage({
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-2">
                           {fee.status !== "paid" && (
-                            <MarkAsPaidDialog
-                              feeId={fee.id}
-                              employeeName={fee.employee_name}
-                              amount={Number(fee.amount)}
-                            >
+                            <MarkAsPaidDialog feeId={String(fee.id)} employeeName={fee.employee_name || ""} amount={Number(fee.amount)}>
                               <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
                                 <DollarSign className="h-4 w-4" />
                               </Button>
                             </MarkAsPaidDialog>
                           )}
-                          <DeleteFeeDialog feeId={fee.id} employeeName={fee.employee_name}>
+                          <DeleteFeeDialog feeId={String(fee.id)} employeeName={fee.employee_name || ""}>
                             <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
                               <Trash2 className="h-4 w-4" />
                             </Button>

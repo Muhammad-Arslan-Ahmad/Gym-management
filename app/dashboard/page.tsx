@@ -1,12 +1,18 @@
 import { requireAuth } from "@/lib/auth"
 import { sql } from "@/lib/db"
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+import { redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Users, DollarSign, AlertCircle, TrendingUp } from "lucide-react"
 import Link from "next/link"
 
 export default async function DashboardPage() {
-  const { user } = await requireAuth()
+  const session = await requireAuth()
+  if (!session) {
+    redirect("/login")
+  }
 
   // Get basic stats with direct SQL queries
   const employeeStats = await sql`

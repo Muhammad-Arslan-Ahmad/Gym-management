@@ -5,24 +5,42 @@ import { ArrowLeft, Mail, Send, Clock, CheckCircle, XCircle } from "lucide-react
 import Link from "next/link"
 import { SendReminderDialog } from "@/components/send-reminder-dialog"
 import { BulkReminderDialog } from "@/components/bulk-reminder-dialog"
+import { query } from "@/lib/db-server"
 
-async function getRemindersData() {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reminders`, {
-      cache: "no-store",
-    })
-    if (!response.ok) {
-      throw new Error("Failed to fetch reminders data")
-    }
-    return await response.json()
-  } catch (error) {
-    console.error("Error fetching reminders data:", error)
-    return { overdueFeesData: [], recentReminders: [] }
-  }
-}
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export default async function RemindersPage() {
-  const { overdueFeesData, recentReminders } = await getRemindersData()
+  // Direct DB queries to avoid internal fetches
+  const overdueFeesResult = await query(`
+      SELECT 
+        fr.*,
+        e.name as employee_name,
+        e.email as employee_email,
+        e.position
+      FROM fee_records fr
+      JOIN employees e ON fr.employee_id = e.id
+      WHERE fr.status IN ('pending', 'overdue')
+      ORDER BY fr.due_date ASC
+    `)
+
+  const recentRemindersResult = await query(`
+      SELECT 
+        r.*,
+        e.name as employee_name,
+        e.email as employee_email,
+        fr.amount,
+        fr.fee_type,
+        fr.due_date
+      FROM reminders r
+      JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN fee_records fr ON r.fee_record_id = fr.id
+      ORDER BY r.sent_at DESC
+      LIMIT 10
+    `)
+
+  const overdueFeesData = overdueFeesResult.rows
+  const recentReminders = recentRemindersResult.rows
 
   // Calculate stats
   const overdueCount = overdueFeesData?.filter((f: any) => f.status === "overdue").length || 0

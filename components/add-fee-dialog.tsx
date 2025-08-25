@@ -67,7 +67,7 @@ export function AddFeeDialog({ children }: AddFeeDialogProps) {
       amount: Number(formData.get("amount")),
       fee_type: formData.get("fee_type") as string,
       due_date: formData.get("due_date") as string,
-      notes: (formData.get("notes") as string) || null,
+      description: (formData.get("notes") as string) || null,
     }
 
     try {
