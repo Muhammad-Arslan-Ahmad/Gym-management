@@ -9,8 +9,9 @@ import { Users, DollarSign, AlertCircle, TrendingUp } from "lucide-react"
 import Link from "next/link"
 
 export default async function DashboardPage() {
-  const session = await requireAuth()
-  if (!session) {
+  try {
+    const session = await requireAuth()
+  } catch (error) {
     redirect("/login")
   }
 

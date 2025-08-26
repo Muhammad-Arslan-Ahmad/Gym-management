@@ -19,6 +19,12 @@ export const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
   return result.rows
 }
 
+// Add unsafe method for complex queries
+sql.unsafe = async (queryText: string, params: any[]) => {
+  const result = await serverQuery(queryText, params)
+  return result.rows
+}
+
 export const getFeeRecords = async (filters?: {
   search?: string
   status?: string

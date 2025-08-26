@@ -1,32 +1,138 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, DollarSign } from "lucide-react"
+import { Plus, Search, Trash2, DollarSign, ChevronLeft, ChevronRight } from "lucide-react"
 import { AddFeeDialog } from "@/components/add-fee-dialog"
 import { DeleteFeeDialog } from "@/components/delete-fee-dialog"
 import { MarkAsPaidDialog } from "@/components/mark-as-paid-dialog"
 import { getFeeRecords } from "@/lib/db"
+import { requireAuth } from "@/lib/auth"
+import { redirect } from "next/navigation"
+import { sql } from "@/lib/db"
+import Link from "next/link"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
+
+const FEES_PER_PAGE = 10
 
 export default async function FeesPage({
   searchParams,
 }: {
-  searchParams: { search?: string; status?: string; type?: string }
+  searchParams: { search?: string; status?: string; type?: string; page?: string }
 }) {
-  const feeRecords = await getFeeRecords({
-    search: searchParams.search,
-    status: searchParams.status,
-    type: searchParams.type,
-  })
+  try {
+    await requireAuth()
+  } catch (error) {
+    redirect("/login")
+  }
 
-  // Calculate totals
+  const currentPage = parseInt(searchParams.page || "1", 10)
+  const offset = (currentPage - 1) * FEES_PER_PAGE
+
+  // Get total count for pagination
+  let totalCount = 0
+  try {
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM fee_records fr
+      JOIN employees e ON fr.employee_id = e.id
+      WHERE 1=1
+    `
+    const countParams: any[] = []
+    let paramCount = 0
+
+    if (searchParams.search) {
+      paramCount++
+      countQuery += ` AND (e.name ILIKE $${paramCount} OR fr.description ILIKE $${paramCount} OR fr.fee_type ILIKE $${paramCount})`
+      countParams.push(`%${searchParams.search}%`)
+    }
+
+    if (searchParams.status) {
+      const statuses = searchParams.status.split(",")
+      paramCount++
+      countQuery += ` AND fr.status = ANY($${paramCount})`
+      countParams.push(statuses)
+    }
+
+    if (searchParams.type) {
+      paramCount++
+      countQuery += ` AND fr.fee_type = $${paramCount}`
+      countParams.push(searchParams.type)
+    }
+
+    const countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM fee_records fr
+      JOIN employees e ON fr.employee_id = e.id
+      WHERE 1=1
+      ${searchParams.search ? sql`AND (e.name ILIKE ${'%' + searchParams.search + '%'} OR fr.description ILIKE ${'%' + searchParams.search + '%'} OR fr.fee_type ILIKE ${'%' + searchParams.search + '%'})` : sql``}
+      ${searchParams.status ? sql`AND fr.status = ANY(${searchParams.status.split(',')})` : sql``}
+      ${searchParams.type ? sql`AND fr.fee_type = ${searchParams.type}` : sql``}
+    `
+    
+    totalCount = parseInt(countResult[0]?.total || "0", 10)
+  } catch (error) {
+    console.error("Error getting fee count:", error)
+    totalCount = 0
+  }
+
+  // Get paginated fee records
+  let queryText = `
+      SELECT 
+        fr.*, 
+        e.name as employee_name,
+        e.email as employee_email,
+        e.position as employee_position
+      FROM fee_records fr
+      JOIN employees e ON fr.employee_id = e.id
+      WHERE 1=1
+    `
+  const params: any[] = []
+  let paramCount = 0
+
+  if (searchParams.search) {
+    paramCount++
+    queryText += ` AND (e.name ILIKE $${paramCount} OR fr.description ILIKE $${paramCount} OR fr.fee_type ILIKE $${paramCount})`
+    params.push(`%${searchParams.search}%`)
+  }
+
+  if (searchParams.status) {
+    const statuses = searchParams.status.split(",")
+    paramCount++
+    queryText += ` AND fr.status = ANY($${paramCount})`
+    params.push(statuses)
+  }
+
+  if (searchParams.type) {
+    paramCount++
+    queryText += ` AND fr.fee_type = $${paramCount}`
+    params.push(searchParams.type)
+  }
+
+  queryText += ` ORDER BY fr.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`
+  params.push(FEES_PER_PAGE, offset)
+
+  let feeRecords: any[] = []
+  try {
+    const result = await sql.unsafe(queryText, params)
+    feeRecords = result
+  } catch (error) {
+    console.error("Error fetching fee records:", error)
+    feeRecords = []
+  }
+
+  // Calculate totals for summary cards
   const totalPending =
     feeRecords?.filter((f) => f.status === "pending").reduce((sum, f) => sum + Number(f.amount), 0) || 0
   const totalOverdue =
     feeRecords?.filter((f) => f.status === "overdue").reduce((sum, f) => sum + Number(f.amount), 0) || 0
   const totalPaid = feeRecords?.filter((f) => f.status === "paid").reduce((sum, f) => sum + Number(f.amount), 0) || 0
+
+  const totalPages = Math.ceil(totalCount / FEES_PER_PAGE)
+  const hasNextPage = currentPage < totalPages
+  const hasPrevPage = currentPage > 1
 
   return (
     <div>
@@ -79,6 +185,7 @@ export default async function FeesPage({
             />
             {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
             {searchParams.type && <input type="hidden" name="type" value={searchParams.type} />}
+            {searchParams.page && <input type="hidden" name="page" value="1" />}
           </form>
         </div>
         <div className="flex gap-2">
@@ -96,6 +203,7 @@ export default async function FeesPage({
             <button type="submit" className="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">Apply</button>
             {searchParams.search && <input type="hidden" name="search" value={searchParams.search} />}
             {searchParams.type && <input type="hidden" name="type" value={searchParams.type} />}
+            <input type="hidden" name="page" value="1" />
           </form>
           <form method="GET">
             <select
@@ -111,6 +219,7 @@ export default async function FeesPage({
             <button type="submit" className="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">Apply</button>
             {searchParams.search && <input type="hidden" name="search" value={searchParams.search} />}
             {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
+            <input type="hidden" name="page" value="1" />
           </form>
           <AddFeeDialog>
             <Button className="bg-blue-600 hover:bg-blue-700">
@@ -124,75 +233,138 @@ export default async function FeesPage({
       {/* Fee Records Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Fee Records ({feeRecords?.length || 0})</CardTitle>
-          <CardDescription>Manage employee fee payments and track status</CardDescription>
+          <CardTitle>Fee Records ({totalCount})</CardTitle>
+          <CardDescription>
+            Manage employee fee payments and track status
+            {totalPages > 1 && (
+              <span className="ml-2">
+                (Page {currentPage} of {totalPages})
+              </span>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {feeRecords && feeRecords.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Employee</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Amount</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Due Date</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Paid Date</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {feeRecords.map((fee) => (
-                    <tr key={fee.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div>
-                          <div className="font-medium text-gray-900">{fee.employee_name}</div>
-                          <div className="text-sm text-gray-500">{fee.fee_type}</div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-900 font-medium">${Number(fee.amount).toLocaleString()}</td>
-                      <td className="py-3 px-4 text-gray-900 capitalize">{fee.fee_type}</td>
-                      <td className="py-3 px-4 text-gray-900">{new Date(fee.due_date).toLocaleDateString()}</td>
-                      <td className="py-3 px-4 text-gray-900">
-                        {fee.paid_date ? new Date(fee.paid_date).toLocaleDateString() : "-"}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge
-                          variant={
-                            fee.status === "paid"
-                              ? "default"
-                              : fee.status === "overdue"
-                                ? "destructive"
-                                : fee.status === "pending"
-                                  ? "secondary"
-                                  : "outline"
-                          }
-                        >
-                          {fee.status}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          {fee.status !== "paid" && (
-                            <MarkAsPaidDialog feeId={String(fee.id)} employeeName={fee.employee_name || ""} amount={Number(fee.amount)}>
-                              <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                                <DollarSign className="h-4 w-4" />
-                              </Button>
-                            </MarkAsPaidDialog>
-                          )}
-                          <DeleteFeeDialog feeId={String(fee.id)} employeeName={fee.employee_name || ""}>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </DeleteFeeDialog>
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Employee</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Amount</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Due Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Paid Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {feeRecords.map((fee) => (
+                      <tr key={fee.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <div>
+                            <div className="font-medium text-gray-900">{fee.employee_name}</div>
+                            <div className="text-sm text-gray-500">{fee.fee_type}</div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-gray-900 font-medium">${Number(fee.amount).toLocaleString()}</td>
+                        <td className="py-3 px-4 text-gray-900 capitalize">{fee.fee_type}</td>
+                        <td className="py-3 px-4 text-gray-900">{new Date(fee.due_date).toLocaleDateString()}</td>
+                        <td className="py-3 px-4 text-gray-900">
+                          {fee.paid_date ? new Date(fee.paid_date).toLocaleDateString() : "-"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge
+                            variant={
+                              fee.status === "paid"
+                                ? "default"
+                                : fee.status === "overdue"
+                                  ? "destructive"
+                                  : fee.status === "pending"
+                                    ? "secondary"
+                                    : "outline"
+                            }
+                          >
+                            {fee.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            {fee.status !== "paid" && (
+                              <MarkAsPaidDialog feeId={String(fee.id)} employeeName={fee.employee_name || ""} amount={Number(fee.amount)}>
+                                <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
+                                  <DollarSign className="h-4 w-4" />
+                                </Button>
+                              </MarkAsPaidDialog>
+                            )}
+                            <DeleteFeeDialog feeId={String(fee.id)} employeeName={fee.employee_name || ""}>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </DeleteFeeDialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-500">
+                    Showing {offset + 1} to {Math.min(offset + FEES_PER_PAGE, totalCount)} of {totalCount} fee records
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Link 
+                      href={{
+                        pathname: "/dashboard/fees",
+                        query: { 
+                          ...searchParams, 
+                          page: (currentPage - 1).toString() 
+                        }
+                      }}
+                    >
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={!hasPrevPage}
+                        className={!hasPrevPage ? "opacity-50 cursor-not-allowed" : ""}
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Previous
+                      </Button>
+                    </Link>
+                    
+                    <span className="text-sm text-gray-500">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    
+                    <Link 
+                      href={{
+                        pathname: "/dashboard/fees",
+                        query: { 
+                          ...searchParams, 
+                          page: (currentPage + 1).toString() 
+                        }
+                      }}
+                    >
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={!hasNextPage}
+                        className={!hasNextPage ? "opacity-50 cursor-not-allowed" : ""}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12">
               <div className="text-gray-500 mb-4">No fee records found</div>

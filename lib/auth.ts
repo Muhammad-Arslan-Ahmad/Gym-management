@@ -89,7 +89,9 @@ export async function getSession(): Promise<{ user: AdminUser; session: Session 
 
 export async function requireAuth() {
   const session = await getSession()
-  if (!session) return null
+  if (!session) {
+    throw new Error("Authentication required")
+  }
   return session
 }
 
