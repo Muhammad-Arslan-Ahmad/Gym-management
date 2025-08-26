@@ -1,27 +1,7 @@
-
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
-import { query } from "./lib/db-server"
 
 const PUBLIC_PREFIXES = ["/login", "/auth"]
-
-async function validateSession(token: string): Promise<boolean> {
-  try {
-    const result = await query(
-      `
-        SELECT s.id 
-        FROM sessions s
-        WHERE s.session_token = $1 AND s.expires_at > NOW()
-        LIMIT 1
-      `,
-      [token]
-    )
-    return result.rows.length > 0
-  } catch (error) {
-    console.error("Session validation error:", error)
-    return false
-  }
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -30,12 +10,7 @@ export async function middleware(request: NextRequest) {
   // Root route: send to dashboard if logged in, otherwise to login
   if (pathname === "/") {
     const url = request.nextUrl.clone()
-    if (sessionToken) {
-      const isValidSession = await validateSession(sessionToken)
-      url.pathname = isValidSession ? "/dashboard" : "/login"
-    } else {
-      url.pathname = "/login"
-    }
+    url.pathname = sessionToken ? "/dashboard" : "/login"
     return NextResponse.redirect(url)
   }
 
@@ -43,31 +18,19 @@ export async function middleware(request: NextRequest) {
   if (isPublic) {
     // Prevent accessing login if already authenticated
     if (pathname === "/login" && sessionToken) {
-      const isValidSession = await validateSession(sessionToken)
-      if (isValidSession) {
-        const url = request.nextUrl.clone()
-        url.pathname = "/dashboard"
-        return NextResponse.redirect(url)
-      }
+      const url = request.nextUrl.clone()
+      url.pathname = "/dashboard"
+      return NextResponse.redirect(url)
     }
     return NextResponse.next()
   }
 
-  // Protect everything else - validate session properly
+  // Protect everything else - just check if session token exists
+  // Real validation will happen in the page components using getSession()
   if (!sessionToken) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
-  }
-
-  const isValidSession = await validateSession(sessionToken)
-  if (!isValidSession) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/login"
-    // Clear invalid session cookie
-    const response = NextResponse.redirect(url)
-    response.cookies.delete("gm_session")
-    return response
   }
 
   return NextResponse.next()

@@ -1,4 +1,8 @@
+"use client"
 
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useSessionValidation } from "@/lib/client-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,25 +11,27 @@ import { Plus, Search, Trash2, DollarSign, ChevronLeft, ChevronRight } from "luc
 import { AddFeeDialog } from "@/components/add-fee-dialog"
 import { DeleteFeeDialog } from "@/components/delete-fee-dialog"
 import { MarkAsPaidDialog } from "@/components/mark-as-paid-dialog"
-import { getFeeRecords } from "@/lib/db"
-import { requireAuth } from "@/lib/auth"
-import { redirect } from "next/navigation"
 import { sql } from "@/lib/db"
 import Link from "next/link"
-export const dynamic = "force-dynamic"
-export const revalidate = 0
 
 const FEES_PER_PAGE = 10
 
-export default async function FeesPage({
+export default function FeesPage({
   searchParams,
 }: {
   searchParams: { search?: string; status?: string; type?: string; page?: string }
 }) {
-  try {
-    await requireAuth()
-  } catch (error) {
-    redirect("/login")
+  const router = useRouter()
+  const { isValid, isLoading } = useSessionValidation()
+
+  useEffect(() => {
+    if (!isLoading && !isValid) {
+      router.push("/login")
+    }
+  }, [isValid, isLoading, router])
+
+  if (isLoading || !isValid) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
 
   const currentPage = parseInt(searchParams.page || "1", 10)
@@ -34,34 +40,6 @@ export default async function FeesPage({
   // Get total count for pagination
   let totalCount = 0
   try {
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM fee_records fr
-      JOIN employees e ON fr.employee_id = e.id
-      WHERE 1=1
-    `
-    const countParams: any[] = []
-    let paramCount = 0
-
-    if (searchParams.search) {
-      paramCount++
-      countQuery += ` AND (e.name ILIKE $${paramCount} OR fr.description ILIKE $${paramCount} OR fr.fee_type ILIKE $${paramCount})`
-      countParams.push(`%${searchParams.search}%`)
-    }
-
-    if (searchParams.status) {
-      const statuses = searchParams.status.split(",")
-      paramCount++
-      countQuery += ` AND fr.status = ANY($${paramCount})`
-      countParams.push(statuses)
-    }
-
-    if (searchParams.type) {
-      paramCount++
-      countQuery += ` AND fr.fee_type = $${paramCount}`
-      countParams.push(searchParams.type)
-    }
-
     const countResult = await sql`
       SELECT COUNT(*) as total
       FROM fee_records fr
@@ -71,7 +49,7 @@ export default async function FeesPage({
       ${searchParams.status ? sql`AND fr.status = ANY(${searchParams.status.split(',')})` : sql``}
       ${searchParams.type ? sql`AND fr.fee_type = ${searchParams.type}` : sql``}
     `
-    
+
     totalCount = parseInt(countResult[0]?.total || "0", 10)
   } catch (error) {
     console.error("Error getting fee count:", error)
@@ -337,11 +315,11 @@ export default async function FeesPage({
                         Previous
                       </Button>
                     </Link>
-                    
+
                     <span className="text-sm text-gray-500">
                       Page {currentPage} of {totalPages}
                     </span>
-                    
+
                     <Link 
                       href={{
                         pathname: "/dashboard/fees",

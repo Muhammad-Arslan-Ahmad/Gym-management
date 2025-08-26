@@ -1,8 +1,9 @@
 
-import { requireAuth } from "@/lib/auth"
-import { sql } from "@/lib/db"
-export const dynamic = "force-dynamic"
-export const revalidate = 0
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useSessionValidation } from "@/lib/client-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
