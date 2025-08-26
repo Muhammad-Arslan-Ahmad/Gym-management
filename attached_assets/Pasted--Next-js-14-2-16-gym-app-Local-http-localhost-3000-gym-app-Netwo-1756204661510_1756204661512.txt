@@ -1,0 +1,65 @@
+ ▲ Next.js 14.2.16
+gym-app       |   - Local:        http://localhost:3000
+gym-app       |   - Network:      http://0.0.0.0:3000
+gym-app       | 
+gym-app       |  ✓ Starting...
+gym-app       |  ✓ Ready in 326ms
+gym-app       | /app/.next/server/middleware.js:2
+gym-app       | Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`}process!==r.g.process&&(process.env=r.g.process.env,r.g.process=process),Object.defineProperty(globalThis,"__import_unsupported",{value:function(e){let t=new Proxy(function(){},{get(t,r){if("then"===r)return{};throw Error(v(e))},construct(){throw Error(v(e))},apply(r,n,i){if("function"==typeof i[0])return i[0](t);throw Error(v(e))}});return new Proxy({},{get:()=>t})},enumerable:!1,configurable:!1}),_();class w extends Error{constructor({page:e}){super(`The middleware "${e}" accepts an async API directly with the form:
+gym-app       |                                                                                                                                                                                                                                                                                             ^
+gym-app       | 
+gym-app       | Error: The edge runtime does not support Node.js 'crypto' module.
+gym-app       | Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime
+gym-app       |     at Object.get (/app/.next/server/middleware.js:2:291)
+gym-app       |     at 2731 (/app/.next/server/middleware.js:18:116844)
+gym-app       |     at t (/app/.next/server/edge-runtime-webpack.js:1:142)
+gym-app       |     at 7147 (/app/.next/server/middleware.js:18:117779)
+gym-app       |     at t (/app/.next/server/edge-runtime-webpack.js:1:142)
+gym-app       |     at 3603 (/app/.next/server/middleware.js:18:111974)
+gym-app       |     at t (/app/.next/server/edge-runtime-webpack.js:1:142)
+gym-app       |     at 2056 (/app/.next/server/middleware.js:18:94207)
+gym-app       |     at t (/app/.next/server/edge-runtime-webpack.js:1:142)
+gym-app       |     at 3970 (/app/.next/server/middleware.js:18:118571)
+gym-app       | Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+gym-app       |     at new NodeError (node:internal/errors:405:5)
+gym-app       |     at ServerResponse.appendHeader (node:_http_outgoing:692:11)
+gym-app       |     at /app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:24551
+gym-app       |     at _Headers.forEach (node:internal/deps/undici/undici:2511:22)
+gym-app       |     at m (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:24533)
+gym-app       |     at P (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:83072)
+gym-app       |     at nq (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:69672)
+gym-app       |     at n1 (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:81755)
+gym-app       |     at AsyncLocalStorage.run (node:async_hooks:338:14)
+gym-app       |     at Timeout._onTimeout (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:87775) {
+gym-app       |   code: 'ERR_HTTP_HEADERS_SENT',
+gym-app       |   digest: '3802792657'
+gym-app       | }
+gym-app       | /app/.next/server/middleware.js:2
+gym-app       | Learn More: https://nextjs.org/docs/messages/node-module-in-edge-runtime`}process!==r.g.process&&(process.env=r.g.process.env,r.g.process=process),Object.defineProperty(globalThis,"__import_unsupported",{value:function(e){let t=new Proxy(function(){},{get(t,r){if("then"===r)return{};throw Error(v(e))},construct(){throw Error(v(e))},apply(r,n,i){if("function"==typeof i[0])return i[0](t);throw Error(v(e))}});return new Proxy({},{get:()=>t})},enumerable:!1,configurable:!1}),_();class w extends Error{constructor({page:e}){super(`The middleware "${e}" accepts an async API directly with the form:
+gym-app       |                                                                                                                                                           ^
+gym-app       | 
+gym-app       | TypeError: Cannot redefine property: __import_unsupported
+gym-app       |     at Proxy.defineProperty (<anonymous>)
+gym-app       |     at 344 (/app/.next/server/middleware.js:2:155)
+gym-app       |     at t (/app/.next/server/edge-runtime-webpack.js:1:142)
+gym-app       |     at /app/.next/server/middleware.js:18:141913
+gym-app       |     at r (/app/.next/server/edge-runtime-webpack.js:1:1248)
+gym-app       |     at /app/.next/server/middleware.js:1:51
+gym-app       |     at Script.runInContext (node:vm:133:12)
+gym-app       |     at runInContext (node:vm:281:6)
+gym-app       |     at evaluateInContext (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/server/web/sandbox/context.js:407:38)
+gym-app       |     at getRuntimeContext (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/server/web/sandbox/sandbox.js:71:9)
+gym-app       | Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+gym-app       |     at new NodeError (node:internal/errors:405:5)
+gym-app       |     at ServerResponse.appendHeader (node:_http_outgoing:692:11)
+gym-app       |     at /app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:24551
+gym-app       |     at _Headers.forEach (node:internal/deps/undici/undici:2511:22)
+gym-app       |     at m (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:16:24533)
+gym-app       |     at P (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:83072)
+gym-app       |     at nq (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:69672)
+gym-app       |     at n1 (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:81755)
+gym-app       |     at AsyncLocalStorage.run (node:async_hooks:338:14)
+gym-app       |     at Timeout._onTimeout (/app/node_modules/.pnpm/next@14.2.16_react-dom@18.3.1_react@18.3.1/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:12:87775) {
+gym-app       |   code: 'ERR_HTTP_HEADERS_SENT',
+gym-app       |   digest: '3802792657'
+gym-app       | }
